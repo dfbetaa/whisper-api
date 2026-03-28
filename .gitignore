@@ -1,0 +1,23 @@
+# Entorno virtual
+venv/
+
+# Archivos de Python compilado
+__pycache__/
+*.pyc
+*.pyo
+
+# Modelos de Whisper descargados (pesan mucho)
+~/.cache/whisper/
+
+# Archivos de audio de prueba
+*.mp3
+*.wav
+*.m4a
+*.ogg
+*.flac
+
+# Variables de entorno (contraseñas, API keys)
+.env
+
+# Archivos de VS Code
+.vscode/
