@@ -3,37 +3,37 @@ import tempfile
 import time
 import os
 
-# Cargamos el modelo UNA sola vez cuando arranca el servidor.
-# Esto es importante — cargar el modelo tarda varios segundos.
-# Si lo cargáramos dentro de la función, cada request tardaría mucho.
+# Load the model ONCE at server startup.
+# This matters — loading the model takes several seconds.
+# If we loaded it inside the function, every request would be slow.
 model = whisper.load_model("base")
 
 def transcribe_audio(audio_bytes: bytes) -> dict:
     """
-    Recibe el audio como bytes, lo transcribe con Whisper,
-    y devuelve texto, idioma detectado, y duración.
+    Takes audio as bytes, transcribes it with Whisper,
+    and returns the text, detected language, and duration.
     """
-    
-    # Creamos un archivo temporal en disco para guardar el audio.
-    # delete=False significa que no se borra automáticamente al cerrarlo
-    # lo borraremos nosotros manualmente al final.
+
+    # Write the audio to a temporary file on disk.
+    # delete=False means it is not removed automatically when closed;
+    # we remove it manually at the end.
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-        tmp.write(audio_bytes)       # escribimos los bytes al archivo
-        tmp_path = tmp.name          # guardamos la ruta, ej: C:\Temp\tmpXYZ.wav
+        tmp.write(audio_bytes)       # write the bytes to the file
+        tmp_path = tmp.name          # keep the path, e.g. /tmp/tmpXYZ.wav
 
     try:
-        # Empezamos a medir el tiempo
+        # Start the timer.
         start_time = time.time()
 
-        # Le decimos a Whisper que transcriba el archivo.
-        # result es un diccionario con muchísima información —
-        # nosotros solo necesitamos el texto y el idioma detectado.
+        # Ask Whisper to transcribe the file.
+        # result is a dict with a lot of information —
+        # we only need the text and the detected language.
         result = model.transcribe(tmp_path)
 
-        # Calculamos cuántos segundos tardó
+        # Measure how long it took.
         duration = round(time.time() - start_time, 2)
 
-        # Devolvemos solo lo que nos interesa
+        # Return only what we care about.
         return {
             "text": result["text"].strip(),
             "language": result["language"],
@@ -41,7 +41,7 @@ def transcribe_audio(audio_bytes: bytes) -> dict:
         }
 
     finally:
-        # El bloque finally se ejecuta SIEMPRE, haya error o no.
-        # Esto garantiza que el archivo temporal siempre se borre,
-        # incluso si Whisper lanza una excepción.
+        # The finally block always runs, error or not.
+        # This guarantees the temporary file is always removed,
+        # even if Whisper raises an exception.
         os.remove(tmp_path)

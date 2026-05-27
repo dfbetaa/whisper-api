@@ -1,10 +1,13 @@
-version: "3.9"
-
 services:
   whisper-api:
     build: .
-    
     ports:
       - "8000:8000"
-
+    # Persist downloaded Whisper model weights between container restarts
+    # so they are not re-downloaded every time the container is recreated.
+    volumes:
+      - whisper-cache:/root/.cache/whisper
     restart: unless-stopped
+
+volumes:
+  whisper-cache:

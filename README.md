@@ -1,104 +1,124 @@
 # Whisper Transcription API
 
-API REST para transcribir audio a texto usando OpenAI Whisper.
-Desarrollada con FastAPI y pensada para integrarse en sistemas conversacionales
-y aplicaciones de salud que requieren procesamiento de voz en tiempo real.
+A production-ready REST API that transcribes audio to text using [OpenAI Whisper](https://github.com/openai/whisper), built with FastAPI and fully containerised with Docker. Whisper runs entirely on-device, so audio never leaves the server, which makes it suitable for privacy-sensitive use cases such as healthcare and conversational systems.
 
-## Tecnologías
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-- **Python 3.11**
-- **FastAPI** — framework web moderno con validación automática de datos
-- **OpenAI Whisper** — modelo de Speech-to-Text que corre completamente local
-- **Uvicorn** — servidor ASGI de alto rendimiento
-- **Docker** — containerización para despliegue reproducible
+## Features
 
-## Requisitos previos
+- **Speech-to-text** for `.wav`, `.mp3`, `.m4a`, `.ogg`, `.flac`, and `.mp4`
+- **Automatic language detection** returned with every transcription
+- **Local inference** — no third-party API calls, no audio leaves the machine
+- **Input validation** — rejects unsupported formats and empty files with clear HTTP errors
+- **Auto-generated OpenAPI docs** at `/docs`
+- **Single-command Docker deployment**
 
-- Python 3.8 o superior
-- ffmpeg instalado en el sistema
-- Docker (opcional, para correr en contenedor)
+## Tech stack
 
-## Instalación local
+| Layer | Technology |
+|-------|-----------|
+| Language | Python 3.11 |
+| Web framework | FastAPI + Uvicorn (ASGI) |
+| ML model | OpenAI Whisper (`base`, runs locally) |
+| Containerisation | Docker + Docker Compose |
 
-1. Clona el repositorio
-```
-git clone https://github.com/TU_USUARIO/whisper-api.git
+## Quick start (Docker)
+
+The fastest way to run the API. Requires only Docker installed.
+
+```bash
+git clone https://github.com/dfbetaa/whisper-api.git
 cd whisper-api
+docker compose up --build
 ```
 
-2. Crea y activa un entorno virtual
-```
+The API is then available at `http://localhost:8000`, with interactive docs at `http://localhost:8000/docs`.
+
+## Local setup (without Docker)
+
+Requires Python 3.8+ and [ffmpeg](https://ffmpeg.org/) installed on your system.
+
+```bash
+git clone https://github.com/dfbetaa/whisper-api.git
+cd whisper-api
+
+# create and activate a virtual environment
 python -m venv venv
-venv\Scripts\activate        # Windows
-source venv/bin/activate     # Mac/Linux
-```
+source venv/bin/activate        # macOS / Linux
+venv\Scripts\activate           # Windows
 
-3. Instala las dependencias
-```
+# install dependencies and run
 pip install -r requirements.txt
-```
-
-4. Arranca el servidor
-```
 uvicorn app.main:app --reload
 ```
 
-El servidor estará corriendo en `http://127.0.0.1:8000`
+## API reference
 
-## Uso
+### `GET /`
+Health check. Confirms the server is running.
 
-### Documentación interactiva
-Visita `http://127.0.0.1:8000/docs` para explorar y probar la API
-desde una interfaz visual generada automáticamente por FastAPI.
-
-### Health check
-```
-GET /
-```
-Respuesta:
 ```json
-{"status": "ok", "message": "Whisper API corriendo"}
+{ "status": "ok", "message": "Whisper API is running" }
 ```
 
-### Transcribir audio
-```
-POST /transcribe
-```
-Parámetros:
-- `file` — archivo de audio (formatos soportados: .wav, .mp3, .m4a, .ogg, .flac, .mp4)
+### `POST /transcribe`
+Transcribes an uploaded audio file.
 
-Ejemplo con curl:
-```
-curl.exe -X POST "http://127.0.0.1:8000/transcribe" -F "file=@audio.mp3"
+**Request:** `multipart/form-data` with a single `file` field.
+
+```bash
+curl -X POST "http://localhost:8000/transcribe" -F "file=@audio.mp3"
 ```
 
-Respuesta:
+**Response `200 OK`:**
+
 ```json
 {
-  "text": "Hola, esto es una prueba de transcripción",
-  "language": "es",
+  "text": "Hello, this is a transcription test",
+  "language": "en",
   "duration_seconds": 3.45
 }
 ```
 
-## Estructura del proyecto
+**Error responses:**
+
+| Status | Cause |
+|--------|-------|
+| `400` | Unsupported file format, missing filename, or empty file |
+| `500` | Transcription failure |
+
+## Project structure
+
 ```
 whisper-api/
 ├── app/
-│   ├── __init__.py       # marca la carpeta como módulo Python
-│   ├── models.py         # schemas de datos con Pydantic
-│   ├── transcriber.py    # lógica de transcripción con Whisper
-│   └── main.py           # endpoints de FastAPI
-├── requirements.txt      # dependencias del proyecto
-├── Dockerfile            # instrucciones para construir el contenedor
-└── README.md             # este archivo
+│   ├── __init__.py        # marks the folder as a Python package
+│   ├── models.py          # Pydantic response schema
+│   ├── transcriber.py     # Whisper inference logic
+│   └── main.py            # FastAPI endpoints and request validation
+├── Dockerfile             # container build instructions
+├── docker-compose.yml     # single-command orchestration
+├── requirements.txt       # pinned dependencies
+└── README.md
 ```
 
-## Modelo de Whisper
+## Choosing a Whisper model
 
-Por defecto se usa el modelo `base` (145 MB), que ofrece un buen balance
-entre velocidad y precisión. Para cambiar el modelo, edita esta línea
-en `transcriber.py`:
+The API loads the `base` model (~145 MB) by default, a good balance of speed and accuracy. To use a different size, edit the model name in `app/transcriber.py`:
+
 ```python
-model = whisper.load_model("base")  # opciones: tiny, base, small, medium
+model = whisper.load_model("base")  # options: tiny, base, small, medium, large
 ```
+
+Larger models are more accurate but slower and need more memory.
+
+## Notes
+
+The Whisper model is loaded once at startup rather than per request, so the first launch downloads the model weights and subsequent requests are fast. Uploaded audio is written to a temporary file that is always cleaned up, even if transcription fails.
+
+## License
+
+Released under the MIT License. See [LICENSE](LICENSE) for details.
