@@ -12,7 +12,7 @@ A production-ready REST API that transcribes audio to text using [OpenAI Whisper
 - **Speech-to-text** for `.wav`, `.mp3`, `.m4a`, `.ogg`, `.flac`, and `.mp4`
 - **Automatic language detection** returned with every transcription
 - **Local inference** — no third-party API calls, no audio leaves the machine
-- **Input validation** — rejects unsupported formats and empty files with clear HTTP errors
+- **Input validation** — rejects unsupported formats, empty files, and files over 25 MB
 - **Auto-generated OpenAPI docs** at `/docs`
 - **Single-command Docker deployment**
 
@@ -67,7 +67,7 @@ Health check. Confirms the server is running.
 ### `POST /transcribe`
 Transcribes an uploaded audio file.
 
-**Request:** `multipart/form-data` with a single `file` field.
+**Request:** `multipart/form-data` with a single `file` field. Maximum file size: **25 MB**.
 
 ```bash
 curl -X POST "http://localhost:8000/transcribe" -F "file=@audio.mp3"
@@ -83,11 +83,14 @@ curl -X POST "http://localhost:8000/transcribe" -F "file=@audio.mp3"
 }
 ```
 
+`duration_seconds` reflects the duration of the audio clip as detected by Whisper.
+
 **Error responses:**
 
 | Status | Cause |
 |--------|-------|
 | `400` | Unsupported file format, missing filename, or empty file |
+| `413` | File exceeds the 25 MB limit |
 | `500` | Transcription failure |
 
 ## Project structure
@@ -95,15 +98,27 @@ curl -X POST "http://localhost:8000/transcribe" -F "file=@audio.mp3"
 ```
 whisper-api/
 ├── app/
-│   ├── __init__.py        # marks the folder as a Python package
+│   ├── __init__.py
 │   ├── models.py          # Pydantic response schema
 │   ├── transcriber.py     # Whisper inference logic
 │   └── main.py            # FastAPI endpoints and request validation
-├── Dockerfile             # container build instructions
-├── docker-compose.yml     # single-command orchestration
-├── requirements.txt       # pinned dependencies
+├── tests/
+│   └── test_api.py        # pytest test suite
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt       # pinned runtime dependencies
+├── requirements-dev.txt   # test dependencies
 └── README.md
 ```
+
+## Running tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest tests/
+```
+
+Tests cover the health check, input validation (format, empty file, size limit), the success path, and error handling — without requiring the Whisper model to be loaded.
 
 ## Choosing a Whisper model
 
